@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
 #author: @xorrior (Chris Ross)
 
-import os, cmd, sys
+import os, cmd, sys, datetime, time
 from flask import Flask, request, make_response
 from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
@@ -102,7 +102,7 @@ class Leviathan(cmd.Cmd):
 	def preloop(self):
 		"""Initialize the history var"""
 		cmd.Cmd.preloop(self)
-		self._hist = []
+		self._hist = {}
 
 	def postloop(self):
 		"""Print exiting message"""
@@ -119,7 +119,6 @@ class Leviathan(cmd.Cmd):
 
 	def default(self, line):
 		"Default Handler"
-		line = line.strip()
 		#YOLO send the command to the powershell client
 		task = "\x00|"+line
 		self.ws.send(task, binary=True)
@@ -145,6 +144,16 @@ class Leviathan(cmd.Cmd):
 			print "local file does not exist\n"
 			pass
 
+	def do_history(self, line):
+		"""Print all available history"""
+		f = open('command-log.txt','a+')
+		for timestamp, command in self._hist.iteritems():
+			f.write("%s %s\n" % (timestamp, command))
+
+		print "Dumped command log to command-log.txt"
+
+
+
 	def do_exit(self, line):
 		"""Exit the current WebSocketSession"""
 		self.ws.close()
@@ -154,7 +163,9 @@ class Leviathan(cmd.Cmd):
 
 	def precmd(self, line):
 		"""Add the command to history"""
-		self._hist += [ line.strip() ]
+		ts = time.time()
+		st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
+		self._hist[st] = line
 		return line
 
 	def postcmd(self, stop, line):
