@@ -120,7 +120,6 @@ class Leviathan(cmd.Cmd):
 	def default(self, line):
 		"Default Handler"
 		line = line.strip()
-		line = line.split(' ')[0]
 		#YOLO send the command to the powershell client
 		task = "\x00|"+line
 		self.ws.send(task, binary=True)

