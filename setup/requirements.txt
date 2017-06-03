@@ -1,0 +1,6 @@
+#
+############## WinduSocket Requirements #############
+gevent-websocket
+gevent
+pycrypto
+pydispatcher
