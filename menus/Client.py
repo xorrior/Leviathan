@@ -1,5 +1,5 @@
 import base64
-import os, time, sys, datetime, time
+import os, time, sys, datetime, time, zlib
 import glob
 from pydispatch import dispatcher
 import cmd
@@ -124,7 +124,9 @@ class Leviathan(cmd.Cmd):
 			fileData, fileName = taskData.split('|')
 			fileName = fileName.decode('ascii')
 			f = open(fileName, 'wb')
-			f.write(base64.b64decode(fileData))
+			rawEncData = base64.b64decode(fileData)
+			rawData = zlib.decompress(rawEncData, -15)
+			f.write(rawData)
 			f.close()
 			print "File saved to %s" % (os.path.abspath(fileName))
 		elif taskID == "\x02\x00\x00\x00":

