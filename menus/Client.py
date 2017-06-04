@@ -39,6 +39,7 @@ class Leviathan(cmd.Cmd):
 			try:
 				background = raw_input("Exit Session (Y/N)?")
 				if background.lower() == 'y':
+					self.ws.close()
 					return True
 				elif background.lower() == 'n':
 					return cmd.Cmd.cmdloop(self)
@@ -89,7 +90,9 @@ class Leviathan(cmd.Cmd):
 
 	def do_exit(self, line):
 		"""Exit the current WebSocketSession"""
-		self.ws.close()
+		task = "\x03"
+		encData = base64.b64encode(task)
+		self.ws.send(encData)
 		raise KeyboardInterrupt
 
 	def emptyline(self):
@@ -106,17 +109,17 @@ class Leviathan(cmd.Cmd):
 
 	def handleData(self, data):
 		"""Parse tasking results"""
-		taskID = data[0]
+		taskID = data[0:4]
 		taskData = data[5:]
 
-		if taskID == 0:
+		if taskID == "\x00\x00\x00\x00":
 			'''Command shell'''
 			try:
 				print str(taskData.decode('ascii')) + '\n'
 			except Exception:
 				pass
 
-		elif taskID == 1:
+		elif taskID == "\x01\x00\x00\x00":
 			'''File Download'''
 			fileData, fileName = taskData.split('|')
 			fileName = fileName.decode('ascii')
@@ -124,11 +127,14 @@ class Leviathan(cmd.Cmd):
 			f.write(base64.b64decode(fileData))
 			f.close()
 			print "File saved to %s" % (os.path.abspath(fileName))
-		elif taskID == 2:
+		elif taskID == "\x02\x00\x00\x00":
 			'''File upload'''
-			print "File upload successful\n"
+			print str(taskData.decode('ascii'))
+		elif taskID == "\x04\x00\x00\x00":
+			'''Errors executing task'''
+			print str(taskData.decode('ascii'))
 		else:
-			print "command failed\n"
+			print "task failed"
 
 
 	def precmd(self, line):
@@ -155,18 +161,37 @@ class Leviathan(cmd.Cmd):
 		# stolen from dataq at
 		#   http://stackoverflow.com/questions/16826172/filename-tab-completion-in-cmd-cmd-of-python
 
-		before_arg = line.rfind(" ", 0, begidx)
-		if before_arg == -1:
-			return # arg not found
+		return self.complete_path(text, line)
 
-		fixed = line[before_arg+1:begidx]  # fixed portion of the arg
-		arg = line[before_arg+1:endidx]
-		pattern = arg + '*'
+	def complete_path(self, text, line, arg=False):
+		'''Tab completion for local file paths'''
+		# stolen from empire
+		# stolen from dataq at
+    	#http://stackoverflow.com/questions/16826172/filename-tab-completion-in-cmd-cmd-of-python
 
-		completions = []
-		for path in glob.glob(pattern):
-			path = _append_slash_if_dir(path)
-			completions.append(path.replace(fixed, "", 1))
+		if arg:
+			# if we have "command something path"
+			argData = line.split()[1:]
+		else:
+			# if we have "command path"
+			argData = line.split()[0:]
+
+		if not argData or len(argData) == 1:
+			completions = os.listdir('./')
+		else:
+			dir, part, base = argData[-1].rpartition('/')
+			if part == '':
+				dir = './'
+			elif dir == '':
+				dir = '/'            
+
+			completions = []
+			for f in os.listdir(dir):
+				if f.startswith(base):
+					if os.path.isfile(os.path.join(dir,f)):
+						completions.append(f)
+					else:
+						completions.append(f+'/')
 
 		return completions
 

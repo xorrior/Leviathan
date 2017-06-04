@@ -27,7 +27,11 @@ def main():
 		print "Listening for connection....\n"
 		server.startServer()
 	except KeyboardInterrupt:
-		sys.exit(0)
+		exit = raw_input("Shutdown Leviathan Listener (Y/N) ??")
+		if exit.lower() == "y":
+			sys.exit(0)
+		else:
+			pass
 
 if __name__ == "__main__":
 	main()

@@ -33,7 +33,7 @@ class Leviathan:
 
 		server.serve_forever()
 
-	def default_response():
+	def default_response(self):
 		page = "<html><body><h1>It works!</h1>"
 		page += "<p>This is the default web page for this server.</p>"
 		page += "<p>The web server software is running but no content has been added, yet.</p>"
