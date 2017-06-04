@@ -1,14 +1,13 @@
-#!/usr/bin/env python
-from menus import Main
-import sys, os
-import argparse
+#!/usr/bin/python2.7
+#author: @xorrior (Chris Ross)
 
-		
+import os, cmd, sys, datetime, time
+from menus import Main
+import argparse
+import base64
+
 
 def main():
-	"""
-	Main function
-	"""
 	parser = argparse.ArgumentParser(description="Start a Leviathan Server")
 	parser.add_argument('--endpoint', help="Specific IP to bind the listener", required=True)
 	parser.add_argument('--port', type=int, help="Port to use", required=True)
@@ -20,14 +19,16 @@ def main():
 	port = args.port
 
 	if not args.certfile:
-		server = Main.WinduServer(host, port, None)
+		server = Main.Leviathan(host, port)
 	else:
-		server = Main.WinduServer(host, port, args.certfile)
+		server = Main.Leviathan(host, port, certfile=args.certfile)
 
-	server.run()
-	MainMenu = Main.Menu()
-	MainMenu.cmdloop()
-	server.stop()
+	try:
+		print "Listening for connection....\n"
+		server.startServer()
+	except KeyboardInterrupt:
+		sys.exit(0)
 
 if __name__ == "__main__":
 	main()
+							
