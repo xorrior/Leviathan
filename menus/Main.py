@@ -22,7 +22,6 @@ class Leviathan:
 		self.clientUser = ""
 		self.sessionName = ""
 		self.certfile = certfile
-		self.lock = threading.Lock()
 
 	def startServer(self):
 		"""Starts the server"""
