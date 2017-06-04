@@ -12,6 +12,5 @@ data over the wire with minimal overhead.
 - Native PowerShell commands
 
 TODO:
-- Additional encryption
-- Mutltithreaded server and multiple, simultaneous client connections
+- Encryption
 - load and execute powershell scripts from memory. 
