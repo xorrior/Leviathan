@@ -24,7 +24,7 @@ def main():
 		server = Main.Leviathan(host, port, certfile=args.certfile)
 
 	try:
-		print "Listening for connection....\n"
+		print "Listening for client connection...."
 		server.startServer()
 	except KeyboardInterrupt:
 		exit = raw_input("Shutdown Leviathan Listener (Y/N) ??")
