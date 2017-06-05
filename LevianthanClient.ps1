@@ -127,6 +127,7 @@ function Start-LeviathanClient {
                 Get-Event -SourceIdentifier "TaskReceived" | Remove-Event
                 Get-EventSubscriber | Unregister-Event
                 $script:client.close()
+                exit
             }
             Default {$ResultData += [BitConverter]::GetBytes(4)}
         }
